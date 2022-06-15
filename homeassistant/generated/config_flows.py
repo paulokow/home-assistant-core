@@ -602,6 +602,7 @@ FLOWS = {
         "vulcan",
         "wallbox",
         "waqi",
+        "watertimer",
         "watttime",
         "waze_travel_time",
         "weatherflow",
