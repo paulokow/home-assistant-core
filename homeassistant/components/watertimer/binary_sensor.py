@@ -1,5 +1,5 @@
-from typing import Callable, Iterable
-
+"""
+"""
 from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_MOVING,
     DEVICE_CLASS_RUNNING,
@@ -7,10 +7,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import format_mac
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -20,6 +18,17 @@ from .device_wrapper import WaterTimerDevice
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, add_entities_callback: AddEntitiesCallback
 ) -> bool:
+    """Function which is called by HAAS to setup entities of this platform
+
+    :param hass: reference to HASS
+    :type hass: HomeAssistant
+    :param entry: configuration
+    :type entry: ConfigEntry
+    :param add_entities_callback: callback function to add entities
+    :type add_entities_callback: AddEntitiesCallback
+    :return: success
+    :rtype: bool
+    """
     device = WaterTimerDevice(entry.data["mac"])
     add_entities_callback(
         [WaterTimerRunningStatus(entry, device), WaterTimerAutoStatus(entry, device)]
@@ -28,7 +37,13 @@ async def async_setup_entry(
 
 
 class WaterTimerRunningStatus(BinarySensorEntity):
-    def __init__(self, entry: ConfigEntry, device: WaterTimerDevice):
+    """_summary_
+
+    :param BinarySensorEntity: _description_
+    :type BinarySensorEntity: _type_
+    """
+
+    def __init__(self, entry: ConfigEntry, device: WaterTimerDevice) -> None:
         self._dev = device
         self._attr_device_class = DEVICE_CLASS_RUNNING
         self._integration_name = entry.title
@@ -63,7 +78,7 @@ class WaterTimerRunningStatus(BinarySensorEntity):
 
 
 class WaterTimerAutoStatus(BinarySensorEntity):
-    def __init__(self, entry: ConfigEntry, device: WaterTimerDevice):
+    def __init__(self, entry: ConfigEntry, device: WaterTimerDevice) -> None:
         self._dev = device
         self._attr_device_class = DEVICE_CLASS_MOVING
         self._integration_name = entry.title
