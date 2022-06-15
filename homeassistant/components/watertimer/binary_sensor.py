@@ -17,7 +17,7 @@ from .device_wrapper import WaterTimerDevice
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, add_entities_callback: AddEntitiesCallback
-) -> bool:
+) -> None:
     """Function which is called by HAAS to setup entities of this platform
 
     :param hass: reference to HASS
@@ -33,7 +33,6 @@ async def async_setup_entry(
     add_entities_callback(
         [WaterTimerRunningStatus(entry, device), WaterTimerAutoStatus(entry, device)]
     )
-    return True
 
 
 class WaterTimerRunningStatus(BinarySensorEntity):
@@ -76,6 +75,9 @@ class WaterTimerRunningStatus(BinarySensorEntity):
     def unique_id(self) -> str:
         return f"{format_mac(self._dev.mac)}.running-state"
 
+    def update(self) -> None:
+        self._dev.update()
+
 
 class WaterTimerAutoStatus(BinarySensorEntity):
     def __init__(self, entry: ConfigEntry, device: WaterTimerDevice) -> None:
@@ -110,3 +112,6 @@ class WaterTimerAutoStatus(BinarySensorEntity):
     @property
     def unique_id(self) -> str:
         return f"{format_mac(self._dev.mac)}.auto-mode-on"
+
+    def update(self) -> None:
+        self._dev.update()
