@@ -7,17 +7,36 @@ from datetime import datetime, timedelta
 import logging
 from random import randint
 
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class WaterTimerDevice:
     """AI is creating summary for"""
 
-    def __init__(self, mac: str) -> None:
+    def __init__(self, mac: str, name: str) -> None:
         self._mac = mac
         self._last_update = datetime.min
+        self._name = name
         self._is_running = False
         self._auto_mode_on = False
+
+    @property
+    def device_info(self) -> dict:
+        """Generate device info structure
+
+        :return: device info
+        :rtype: dict[str, str]
+        """
+        return {
+            "identifiers": {(DOMAIN, self._mac)},
+            "name": self._name,
+            # "manufacturer": self.light.manufacturername,
+            # "model": self.light.productname,
+            # "sw_version": self.light.swversion,
+            # "via_device": (hue.DOMAIN, self.api.bridgeid),
+        }
 
     def update(self):
         """Updates device, not more frequent than once / minute"""

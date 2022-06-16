@@ -26,7 +26,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
 
-    device = WaterTimerDevice(data["mac"])
+    device = WaterTimerDevice(data["mac"], "")
     if not device.can_connect:
         raise CannotConnect
 

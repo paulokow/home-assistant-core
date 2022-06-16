@@ -29,7 +29,7 @@ async def async_setup_entry(
     :return: success
     :rtype: bool
     """
-    device = WaterTimerDevice(entry.data["mac"])
+    device = WaterTimerDevice(entry.data["mac"], entry.title)
     add_entities_callback(
         [WaterTimerRunningStatus(entry, device), WaterTimerAutoStatus(entry, device)]
     )
@@ -52,14 +52,7 @@ class WaterTimerRunningStatus(BinarySensorEntity):
 
     @property
     def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self._dev.mac)},
-            "name": self._integration_name,
-            # "manufacturer": self.light.manufacturername,
-            # "model": self.light.productname,
-            # "sw_version": self.light.swversion,
-            # "via_device": (hue.DOMAIN, self.api.bridgeid),
-        }
+        return self._dev.device_info
 
     @property
     def name(self):
@@ -90,14 +83,7 @@ class WaterTimerAutoStatus(BinarySensorEntity):
 
     @property
     def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, self._dev.mac)},
-            "name": self._integration_name,
-            # "manufacturer": self.light.manufacturername,
-            # "model": self.light.productname,
-            # "sw_version": self.light.swversion,
-            # "via_device": (hue.DOMAIN, self.api.bridgeid),
-        }
+        return self._dev.device_info
 
     @property
     def name(self):
