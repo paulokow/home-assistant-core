@@ -1,15 +1,20 @@
-try:
-    from bluepy import btle
-except ImportError:
-    pass
-
 from datetime import datetime, timedelta
 import logging
 from random import randint
 
+from spraymistf638.driver import RunningMode, SprayMistF638, WorkingMode
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+if _LOGGER.isEnabledFor(logging.DEBUG):
+    from unittest.mock import Mock
+
+    SprayMistF638 = Mock(spec=SprayMistF638)
+    SprayMistF638.return_value.connect = Mock(side_effect=lambda: randint(0, 1) == 1)
+    SprayMistF638.return_value.running_mode = Mock(side_effect=lambda: randint(0, 3))
+    SprayMistF638.return_value.working_mode = Mock(side_effect=lambda: randint(0, 1))
 
 
 class WaterTimerDevice:
@@ -19,8 +24,10 @@ class WaterTimerDevice:
         self._mac = mac
         self._last_update = datetime.min
         self._name = name
+        self._is_available = False
         self._is_running = False
         self._auto_mode_on = False
+        self._device_handle = SprayMistF638(mac)
 
     @property
     def device_info(self) -> dict:
@@ -40,6 +47,7 @@ class WaterTimerDevice:
 
     def update(self):
         """Updates device, not more frequent than once / minute"""
+        _LOGGER.debug("Update called")
         now = datetime.now()
         if now - self._last_update > timedelta(minutes=1):
             self._perform_update()
@@ -47,9 +55,22 @@ class WaterTimerDevice:
 
     def _perform_update(self):
         """Performs actual update of the device data"""
-        _LOGGER.info("Performing update")
-        self._is_running = randint(0, 1) == 1
-        self._auto_mode_on = randint(0, 1) == 1
+        _LOGGER.debug("..Performing update")
+        try:
+            if self._device_handle.connect():
+                self._is_available = True
+                self._is_running = self._device_handle.running_mode in [
+                    RunningMode.RunningAutomatic,
+                    RunningMode.RunningManual,
+                ]
+                self._auto_mode_on = (
+                    self._device_handle.working_mode == WorkingMode.Auto
+                )
+            else:
+                _LOGGER.warning("Water timer device: %s cannot be reached", self._mac)
+                self._is_available = False
+        finally:
+            self._device_handle.disconnect()
 
     @property
     def mac(self) -> str:
@@ -67,7 +88,7 @@ class WaterTimerDevice:
         :return: if connection was successful
         :rtype: bool
         """
-        _LOGGER.info("Reading can_connect")
+        _LOGGER.debug("Reading can_connect")
         return True
 
     @property
@@ -77,7 +98,7 @@ class WaterTimerDevice:
         :return: Active state
         :rtype: bool
         """
-        _LOGGER.info("Reading is_running")
+        _LOGGER.debug("Reading is_running")
         return self._is_running
 
     @property
@@ -87,5 +108,15 @@ class WaterTimerDevice:
         :return: Auto mode state
         :rtype: bool
         """
-        _LOGGER.info("Reading auto_mode")
+        _LOGGER.debug("Reading auto_mode")
         return self._auto_mode_on
+
+    @property
+    def available(self) -> bool:
+        """Reports if the device is connected
+
+        :return: if the device is available
+        :rtype: bool
+        """
+        _LOGGER.debug("Reading availability")
+        return self._is_available

@@ -71,6 +71,11 @@ class WaterTimerRunningStatus(BinarySensorEntity):
     def update(self) -> None:
         self._dev.update()
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._dev.available
+
 
 class WaterTimerAutoStatus(BinarySensorEntity):
     def __init__(self, entry: ConfigEntry, device: WaterTimerDevice) -> None:
@@ -101,3 +106,8 @@ class WaterTimerAutoStatus(BinarySensorEntity):
 
     def update(self) -> None:
         self._dev.update()
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._dev.available
