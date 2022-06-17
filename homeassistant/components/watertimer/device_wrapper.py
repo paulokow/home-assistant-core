@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 import logging
 from random import randint
+from time import sleep
+from typing import Union
 
 from spraymistf638.driver import RunningMode, SprayMistF638, WorkingMode
 
@@ -9,12 +11,20 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 if _LOGGER.isEnabledFor(logging.DEBUG):
-    from unittest.mock import Mock
+    from unittest.mock import Mock, PropertyMock
 
     SprayMistF638 = Mock(spec=SprayMistF638)
-    SprayMistF638.return_value.connect = Mock(side_effect=lambda: randint(0, 1) == 1)
-    SprayMistF638.return_value.running_mode = Mock(side_effect=lambda: randint(0, 3))
-    SprayMistF638.return_value.working_mode = Mock(side_effect=lambda: randint(0, 1))
+    SprayMistF638.return_value.connect = Mock(side_effect=lambda: randint(0, 3) != 0)
+    type(SprayMistF638.return_value).running_mode = PropertyMock(
+        side_effect=lambda: randint(0, 3)
+    )
+    type(SprayMistF638.return_value).working_mode = PropertyMock(
+        side_effect=lambda: randint(0, 1)
+    )
+    type(SprayMistF638.return_value).battery_level = PropertyMock(
+        side_effect=lambda: randint(1, 100)
+    )
+    _LOGGER.warning("Device is mocked in debug logging mode")
 
 
 class WaterTimerDevice:
@@ -26,6 +36,7 @@ class WaterTimerDevice:
         self._name = name
         self._is_available = False
         self._is_running = False
+        self._battery_level = None
         self._auto_mode_on = False
         self._device_handle = SprayMistF638(mac)
 
@@ -57,7 +68,17 @@ class WaterTimerDevice:
         """Performs actual update of the device data"""
         _LOGGER.debug("..Performing update")
         try:
-            if self._device_handle.connect():
+            connected = False
+            for i in range(1, 6):
+                connected = self._device_handle.connect()
+                if connected:
+                    break
+                else:
+                    _LOGGER.info(
+                        "Water timer device: %s not connected retry %d", self._mac, i
+                    )
+                    sleep(1)
+            if connected:
                 self._is_available = True
                 self._is_running = self._device_handle.running_mode in [
                     RunningMode.RunningAutomatic,
@@ -66,6 +87,7 @@ class WaterTimerDevice:
                 self._auto_mode_on = (
                     self._device_handle.working_mode == WorkingMode.Auto
                 )
+                self._battery_level = int(self._device_handle.battery_level)
             else:
                 _LOGGER.warning("Water timer device: %s cannot be reached", self._mac)
                 self._is_available = False
@@ -120,3 +142,13 @@ class WaterTimerDevice:
         """
         _LOGGER.debug("Reading availability")
         return self._is_available
+
+    @property
+    def battery_level(self) -> Union[int, None]:
+        """Reports the device battery level in %
+
+        :return: battery level %
+        :rtype: int
+        """
+        _LOGGER.debug("Reading battery level")
+        return self._battery_level
