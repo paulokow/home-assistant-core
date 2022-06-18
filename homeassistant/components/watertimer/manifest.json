@@ -3,7 +3,7 @@
   "name": "Spray-Mist-F638",
   "config_flow": true,
   "documentation": "https://www.home-assistant.io/integrations/watertimer",
-  "requirements": ["spraymistf638==0.1.3"],
+  "requirements": ["spraymistf638==0.1.4"],
   "ssdp": [],
   "zeroconf": [],
   "homekit": {},
