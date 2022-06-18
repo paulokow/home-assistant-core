@@ -32,7 +32,7 @@ async def async_setup_entry(
     device = create_device(entry.data["mac"], entry.title)
     add_entities_callback(
         [WaterTimerRunningStatus(entry, device), WaterTimerAutoStatus(entry, device)],
-        True,
+        False,
     )
 
 

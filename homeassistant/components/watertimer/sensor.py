@@ -36,7 +36,7 @@ async def async_setup_entry(
             WaterTimerBatteryStatus(entry, device),
             WaterTimerManualModeTime(entry, device),
         ],
-        True,
+        False,
     )
 
 

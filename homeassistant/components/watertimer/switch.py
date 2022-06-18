@@ -29,7 +29,7 @@ async def async_setup_entry(
     :rtype: bool
     """
     device = create_device(entry.data["mac"], entry.title)
-    add_entities_callback([WaterTimerManualSwitch(entry, device)], True)
+    add_entities_callback([WaterTimerManualSwitch(entry, device)], False)
 
 
 class WaterTimerManualSwitch(SwitchEntity):
