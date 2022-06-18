@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 from random import randint
+from threading import RLock
 from time import sleep
 from typing import Union
 
@@ -9,6 +10,8 @@ from spraymistf638.driver import RunningMode, SprayMistF638, WorkingMode
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+updatelock = RLock()
 
 if _LOGGER.isEnabledFor(logging.DEBUG):
     from unittest.mock import Mock, PropertyMock
@@ -78,13 +81,14 @@ class WaterTimerDevice:
             # "via_device": (hue.DOMAIN, self.api.bridgeid),
         }
 
-    def update(self):
+    def update(self, force: bool = False):
         """Updates device, not more frequent than once / minute"""
         _LOGGER.debug("Update called")
         now = datetime.now()
-        if now - self._last_update > timedelta(minutes=1):
-            self._perform_update()
-            self._last_update = now
+        with updatelock:
+            if now - self._last_update > timedelta(minutes=1) or force:
+                self._perform_update()
+                self._last_update = now
 
     def _perform_update(self):
         """Performs actual update of the device data"""
@@ -97,7 +101,9 @@ class WaterTimerDevice:
                     break
                 else:
                     _LOGGER.info(
-                        "Water timer device: %s not connected retry %d", self._mac, i
+                        "Water timer device: %s not connected retry %d",
+                        self._mac,
+                        i,
                     )
                     sleep(1)
             if connected:
@@ -211,11 +217,12 @@ class WaterTimerDevice:
         :rtype: bool
         """
         ret = False
-        try:
-            ret = self._device_handle.switch_manual_on(time)
-            self._perform_update()
-        finally:
-            self._device_handle.disconnect()
+        with updatelock:
+            try:
+                ret = self._device_handle.switch_manual_on(time)
+                self.update(force=True)
+            finally:
+                self._device_handle.disconnect()
         return ret
 
     def turn_manual_off(self) -> bool:
@@ -225,11 +232,12 @@ class WaterTimerDevice:
         :rtype: bool
         """
         ret = False
-        try:
-            ret = self._device_handle.switch_manual_off()
-            self._perform_update()
-        finally:
-            self._device_handle.disconnect()
+        with updatelock:
+            try:
+                ret = self._device_handle.switch_manual_off()
+                self.update(force=True)
+            finally:
+                self._device_handle.disconnect()
         return ret
 
     @property
