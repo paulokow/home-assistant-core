@@ -13,6 +13,18 @@ _LOGGER = logging.getLogger(__name__)
 if _LOGGER.isEnabledFor(logging.DEBUG):
     from unittest.mock import Mock, PropertyMock
 
+    manual_mode = False
+
+    def switch_manual_on(t):
+        _LOGGER.debug("Water timer switched on for %s", t)
+        global manual_mode
+        manual_mode = True
+
+    def switch_manual_off():
+        _LOGGER.debug("Water timer switched off")
+        global manual_mode
+        manual_mode = False
+
     SprayMistF638 = Mock(spec=SprayMistF638)
     SprayMistF638.return_value.connect = Mock(side_effect=lambda: randint(0, 3) != 0)
     type(SprayMistF638.return_value).running_mode = PropertyMock(
@@ -24,6 +36,14 @@ if _LOGGER.isEnabledFor(logging.DEBUG):
     type(SprayMistF638.return_value).battery_level = PropertyMock(
         side_effect=lambda: randint(1, 100)
     )
+    type(SprayMistF638.return_value).manual_on = PropertyMock(
+        side_effect=lambda: manual_mode
+    )
+    type(SprayMistF638.return_value).manual_time = PropertyMock(
+        side_effect=lambda: randint(1, 100)
+    )
+    SprayMistF638.return_value.switch_manual_on = Mock(side_effect=switch_manual_on)
+    SprayMistF638.return_value.switch_manual_off = Mock(side_effect=switch_manual_off)
     _LOGGER.warning("Device is mocked in debug logging mode")
 
 
@@ -38,6 +58,8 @@ class WaterTimerDevice:
         self._is_running = False
         self._battery_level = None
         self._auto_mode_on = False
+        self._manual_mode_time = 30
+        self._manual_mode_on = False
         self._device_handle = SprayMistF638(mac)
 
     @property
@@ -88,6 +110,8 @@ class WaterTimerDevice:
                     self._device_handle.working_mode == WorkingMode.Auto
                 )
                 self._battery_level = int(self._device_handle.battery_level)
+                self._manual_mode_time = self._device_handle.manual_time
+                self._manual_mode_on = self._device_handle.manual_on
             else:
                 _LOGGER.warning("Water timer device: %s cannot be reached", self._mac)
                 self._is_available = False
@@ -111,10 +135,25 @@ class WaterTimerDevice:
         :rtype: bool
         """
         _LOGGER.debug("Reading can_connect")
-        return True
+        ret = False
+        try:
+            ret = self._device_handle.connect()
+        finally:
+            self._device_handle.disconnect()
+        return ret
 
     @property
     def is_running(self) -> bool:
+        """Checks if the device is active at the moment
+
+        :return: Active state
+        :rtype: bool
+        """
+        _LOGGER.debug("Reading is_running")
+        return self._is_running
+
+    @property
+    def is_running_in_manual_mode(self) -> bool:
         """Checks if the device is active at the moment
 
         :return: Active state
@@ -152,3 +191,74 @@ class WaterTimerDevice:
         """
         _LOGGER.debug("Reading battery level")
         return self._battery_level
+
+    @property
+    def manual_mode_on(self) -> bool:
+        """Reports the manual mode status
+
+        :return: if manual mode is started
+        :rtype: bool
+        """
+        _LOGGER.debug("Reading manual mode on")
+        return self._manual_mode_on
+
+    def turn_manual_on(self, time: int = 0) -> bool:
+        """Turn on device in manual mode
+
+        :param time: Run duration, zero means last default value, defaults to 0
+        :type time: int, optional
+        :return: if function succeeded
+        :rtype: bool
+        """
+        ret = False
+        try:
+            ret = self._device_handle.switch_manual_on(time)
+            self._perform_update()
+        finally:
+            self._device_handle.disconnect()
+        return ret
+
+    def turn_manual_off(self) -> bool:
+        """Turn off device in manual mode
+
+        :return: if function succeeded
+        :rtype: bool
+        """
+        ret = False
+        try:
+            ret = self._device_handle.switch_manual_off()
+            self._perform_update()
+        finally:
+            self._device_handle.disconnect()
+        return ret
+
+    @property
+    def manual_mode_time(self) -> int:
+        """Reports the manual mode time (set or remaining) in minutes
+
+        :return: set time (if off) or remaining time (if on) for manual mode run
+        :rtype: int
+        """
+        _LOGGER.debug("Reading manual mode time")
+        return self._manual_mode_time
+
+
+devices: dict[str, WaterTimerDevice] = dict()
+
+
+def create_device(mac: str, name: str) -> WaterTimerDevice:
+    """Creates a WaterTimer device object or returns an existing one by mac address
+
+    :param mac: mac address
+    :type mac: str
+    :param name: name of the device to create
+    :type name: str
+    :return: created or existing device object
+    :rtype: WaterTimerDevice
+    """
+    if mac in devices:
+        return devices[mac]
+    else:
+        dev = WaterTimerDevice(mac, name)
+        devices[mac] = dev
+        return dev

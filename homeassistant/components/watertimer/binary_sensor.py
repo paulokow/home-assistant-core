@@ -12,7 +12,7 @@ from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .device_wrapper import WaterTimerDevice
+from .device_wrapper import WaterTimerDevice, create_device
 
 
 async def async_setup_entry(
@@ -29,9 +29,10 @@ async def async_setup_entry(
     :return: success
     :rtype: bool
     """
-    device = WaterTimerDevice(entry.data["mac"], entry.title)
+    device = create_device(entry.data["mac"], entry.title)
     add_entities_callback(
-        [WaterTimerRunningStatus(entry, device), WaterTimerAutoStatus(entry, device)]
+        [WaterTimerRunningStatus(entry, device), WaterTimerAutoStatus(entry, device)],
+        True,
     )
 
 

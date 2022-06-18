@@ -7,13 +7,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE
+from homeassistant.const import PERCENTAGE, TIME_MINUTES
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .device_wrapper import WaterTimerDevice
+from .const import CONFIG_MANUAL_TIME, DOMAIN
+from .device_wrapper import WaterTimerDevice, create_device
 
 
 async def async_setup_entry(
@@ -30,8 +30,14 @@ async def async_setup_entry(
     :return: success
     :rtype: bool
     """
-    device = WaterTimerDevice(entry.data["mac"], entry.title)
-    add_entities_callback([WaterTimerBatteryStatus(entry, device)])
+    device = create_device(entry.data["mac"], entry.title)
+    add_entities_callback(
+        [
+            WaterTimerBatteryStatus(entry, device),
+            WaterTimerManualModeTime(entry, device),
+        ],
+        True,
+    )
 
 
 class WaterTimerBatteryStatus(SensorEntity):
@@ -66,6 +72,56 @@ class WaterTimerBatteryStatus(SensorEntity):
     def update(self) -> None:
         self._dev.update()
         self._attr_native_value = self._dev.battery_level
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._dev.available
+
+
+class WaterTimerManualModeTime(SensorEntity):
+    """_summary_
+
+    :param BinarySensorEntity: _description_
+    :type BinarySensorEntity: _type_
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = TIME_MINUTES
+    _attr_icon = "mdi:clock-end"
+
+    def __init__(self, entry: ConfigEntry, device: WaterTimerDevice) -> None:
+        self._dev = device
+        self._integration_name = entry.title
+        self.entity_id = (
+            f"{SENSOR_DOMAIN}.{DOMAIN}.{format_mac(self._dev.mac)}.manual-mode-minutes"
+        )
+
+    @property
+    def device_info(self):
+        return self._dev.device_info
+
+    @property
+    def name(self):
+        """Name of the entity."""
+        return f"Manual mode minutes of {self._integration_name}"
+
+    @property
+    def unique_id(self) -> str:
+        return f"{format_mac(self._dev.mac)}.manual-mode-minutes"
+
+    def update(self) -> None:
+        self._dev.update()
+        self._attr_native_value = (
+            self._dev.manual_mode_time
+            if self._dev.manual_mode_on
+            else (
+                self.platform.config_entry.options.get(CONFIG_MANUAL_TIME, 0)
+                if self.platform is not None and self.platform.config_entry is not None
+                else 0
+            )
+        )
 
     @property
     def available(self) -> bool:

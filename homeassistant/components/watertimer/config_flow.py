@@ -7,12 +7,13 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry, OptionsFlow
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import format_mac
 
-from .const import DOMAIN
+from .const import CONFIG_MANUAL_TIME, DOMAIN
 from .device_wrapper import WaterTimerDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,6 +65,47 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> WaterTimerOptionsFlowHandler:
+        """Options callback for WaterTimer."""
+        return WaterTimerOptionsFlowHandler(config_entry)
+
+
+class WaterTimerOptionsFlowHandler(config_entries.OptionsFlow):
+    """Config flow options for WaterTimer."""
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        """Initialize WaterTimer options flow."""
+        self.config_entry = entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the options."""
+        return await self.async_step_user()
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle a flow initialized by the user."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONFIG_MANUAL_TIME,
+                        default=self.config_entry.options.get(CONFIG_MANUAL_TIME, 30),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=120))
+                }
+            ),
         )
 
 

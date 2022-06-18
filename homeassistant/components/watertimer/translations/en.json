@@ -14,5 +14,14 @@
                 }
             }
         }
+    },
+    "options": {
+        "step": {
+            "user": {
+                "data": {
+                    "manual_time": "Manual run duration"
+                }
+            }
+        }
     }
 }
