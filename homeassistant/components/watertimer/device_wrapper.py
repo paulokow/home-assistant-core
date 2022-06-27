@@ -17,7 +17,7 @@ if _LOGGER.isEnabledFor(logging.DEBUG):
     from unittest.mock import Mock, PropertyMock
 
     manual_mode = False
-    pause_days = 0
+    pause_days = randint(0, 7)
 
     def switch_manual_on(t):
         _LOGGER.debug("Water timer switched on for %s", t)

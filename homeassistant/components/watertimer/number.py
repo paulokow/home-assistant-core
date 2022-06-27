@@ -33,16 +33,16 @@ class WaterTimerPauseDaysEntity(NumberEntity):
     """A setting to pause automatic watering for a number of days"""
 
     # _attr_device_class = SwitchDeviceClass.SWITCH
-    _attr_native_min_value = 0
-    _attr_native_max_value = 7
-    _attr_native_step = 1
-    _attr_native_unit_of_measurement = TIME_DAYS
+    _attr_min_value = 0
+    _attr_max_value = 7
+    _attr_step = 1
+    _attr_unit_of_measurement = TIME_DAYS
 
     def __init__(self, entry: ConfigEntry, device: WaterTimerDevice) -> None:
         self._dev = device
         self._config = entry
         self._integration_name = entry.title
-        self._manual_mode_time = entry.options.get(CONFIG_MANUAL_TIME, 30)
+        self._attr_value = 0
         self.entity_id = (
             f"{SENSOR_DOMAIN}.{DOMAIN}.{format_mac(self._dev.mac)}.pause-days"
         )
@@ -61,18 +61,15 @@ class WaterTimerPauseDaysEntity(NumberEntity):
         return f"{format_mac(self._dev.mac)}.pause-days"
 
     def update(self) -> None:
+        """Updates entity value"""
         self._dev.update()
+        self._attr_value = self._dev.pause_days
 
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
         return self._dev.available
 
-    @property
-    def native_value(self) -> float:
-        """Value of the sensor"""
-        return self._dev.pause_days
-
-    def set_native_value(self, value: float) -> None:
+    def set_value(self, value: float) -> None:
         """Update the current value."""
         self._dev.set_pause_days(int(value))
