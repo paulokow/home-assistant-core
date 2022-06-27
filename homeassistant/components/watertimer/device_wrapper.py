@@ -17,6 +17,7 @@ if _LOGGER.isEnabledFor(logging.DEBUG):
     from unittest.mock import Mock, PropertyMock
 
     manual_mode = False
+    pause_days = 0
 
     def switch_manual_on(t):
         _LOGGER.debug("Water timer switched on for %s", t)
@@ -27,6 +28,11 @@ if _LOGGER.isEnabledFor(logging.DEBUG):
         _LOGGER.debug("Water timer switched off")
         global manual_mode
         manual_mode = False
+
+    def set_pause_days(val: int):
+        _LOGGER.debug(f"Pause days set to {val}")
+        global pause_days
+        pause_days = val
 
     SprayMistF638 = Mock(spec=SprayMistF638)
     SprayMistF638.return_value.connect = Mock(side_effect=lambda: randint(0, 3) != 0)
@@ -45,8 +51,12 @@ if _LOGGER.isEnabledFor(logging.DEBUG):
     type(SprayMistF638.return_value).manual_time = PropertyMock(
         side_effect=lambda: randint(1, 100)
     )
+    type(SprayMistF638.return_value).pause_days = PropertyMock(
+        side_effect=lambda: pause_days
+    )
     SprayMistF638.return_value.switch_manual_on = Mock(side_effect=switch_manual_on)
     SprayMistF638.return_value.switch_manual_off = Mock(side_effect=switch_manual_off)
+    SprayMistF638.return_value.set_pause_days = Mock(side_effect=set_pause_days)
     _LOGGER.warning("Device is mocked in debug logging mode")
 
 
@@ -63,6 +73,7 @@ class WaterTimerDevice:
         self._auto_mode_on = False
         self._manual_mode_time = 30
         self._manual_mode_on = False
+        self._pause_days = 0
         self._device_handle = SprayMistF638(mac)
 
     @property
@@ -118,6 +129,7 @@ class WaterTimerDevice:
                 self._battery_level = int(self._device_handle.battery_level)
                 self._manual_mode_time = self._device_handle.manual_time
                 self._manual_mode_on = self._device_handle.manual_on
+                self._pause_days = self._device_handle.pause_days
             else:
                 _LOGGER.warning("Water timer device: %s cannot be reached", self._mac)
                 self._is_available = False
@@ -249,6 +261,34 @@ class WaterTimerDevice:
         """
         _LOGGER.debug("Reading manual mode time")
         return self._manual_mode_time
+
+    @property
+    def pause_days(self) -> int:
+        """Reports pause days
+
+        :return: value
+        :rtype: int
+        """
+        _LOGGER.debug("Reading pause days")
+        return self._pause_days
+
+    def set_pause_days(self, value: int) -> bool:
+        """Setting for pause days
+
+        :param value: Pause duration in days
+        :type value: int
+        :return: if function succeeded
+        :rtype: bool
+        """
+        _LOGGER.debug(f"Setting pause days: {value}")
+        ret = False
+        with updatelock:
+            try:
+                ret = self._device_handle.set_pause_days(value)
+                self.update(force=True)
+            finally:
+                self._device_handle.disconnect()
+        return ret
 
 
 devices: dict[str, WaterTimerDevice] = dict()

@@ -2021,7 +2021,7 @@ spiderpy==1.6.1
 spotipy==2.23.0
 
 # homeassistant.components.watertimer
-spraymistf638==0.1.6
+spraymistf638==0.1.7
 
 # homeassistant.components.sql
 sqlparse==0.5.0
