@@ -1,0 +1,3 @@
+[submodule "config/custom_components/watertimer"]
+	path = config/custom_components/watertimer
+	url = git@github.com:paulokow/watertimer.git
